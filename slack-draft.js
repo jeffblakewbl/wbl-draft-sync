@@ -6,7 +6,7 @@ const teamNameToAbbrev = {
   'Amsterdam Dragons': 'AMS',
   'California Surfers': 'CAL',
   'Cleveland Spiders': 'CLE',
-  'Curacao Blue Wave': 'SPA', // SPA is the old abbreviation still used
+  'Curacao Blue Wave': 'SPA',
   'Denver Blucifers': 'DEN',
   'Dubai Bedouins': 'DUB',
   'Galapagos Shellbacks': 'GAL',
@@ -34,7 +34,6 @@ function verifySlackSignature(event, signingSecret) {
     return false;
   }
   
-  // Check timestamp is within 5 minutes
   const now = Math.floor(Date.now() / 1000);
   if (Math.abs(now - timestamp) > 300) {
     return false;
@@ -53,7 +52,6 @@ function verifySlackSignature(event, signingSecret) {
 }
 
 // Parse the draft message
-// Format: "Round 3, Pick 12 (#56 overall): Denver Blucifers select P Bill Muncey"
 function parseDraftMessage(text) {
   const regex = /Round (\d+), Pick (\d+) \(#\d+ overall\): (.+) select ([A-Z]+(?:\/[A-Z]+)?) (.+)/i;
   const match = text.match(regex);
@@ -81,7 +79,6 @@ function normalizeName(name) {
 }
 
 exports.handler = async (event, context) => {
-  // Only allow POST
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
@@ -97,7 +94,7 @@ exports.handler = async (event, context) => {
     return { statusCode: 400, body: 'Invalid JSON' };
   }
 
-  // Handle Slack URL verification challenge FIRST (before signature check)
+  // Handle Slack URL verification challenge FIRST
   if (payload.type === 'url_verification') {
     console.log('Responding to Slack challenge');
     return {
@@ -117,7 +114,6 @@ exports.handler = async (event, context) => {
   if (payload.type === 'event_callback') {
     const evt = payload.event;
     
-    // Only process messages (not bot messages, edits, etc.)
     if (evt.type !== 'message' || evt.subtype || evt.bot_id) {
       return { statusCode: 200, body: 'Ignored' };
     }
@@ -125,7 +121,6 @@ exports.handler = async (event, context) => {
     const text = evt.text;
     console.log('Received message:', text);
 
-    // Parse the draft message
     const draftInfo = parseDraftMessage(text);
     if (!draftInfo) {
       console.log('Could not parse draft message');
@@ -134,7 +129,6 @@ exports.handler = async (event, context) => {
 
     console.log('Parsed draft info:', draftInfo);
 
-    // Get team abbreviation
     const teamAbbrev = teamNameToAbbrev[draftInfo.teamName];
     if (!teamAbbrev) {
       console.log('Unknown team:', draftInfo.teamName);
@@ -142,20 +136,16 @@ exports.handler = async (event, context) => {
     }
 
     try {
-      // Fetch batters from Firebase
       const battersRes = await fetch(`${firebaseUrl}/draftData/batters.json`);
       const batters = await battersRes.json() || [];
       
-      // Fetch pitchers from Firebase
       const pitchersRes = await fetch(`${firebaseUrl}/draftData/pitchers.json`);
       const pitchers = await pitchersRes.json() || [];
 
-      // Search for player by name
       const normalizedSearchName = normalizeName(draftInfo.playerName);
       let foundPlayer = null;
       let playerType = null;
 
-      // Search batters
       for (const player of batters) {
         if (player && player.Name && normalizeName(player.Name) === normalizedSearchName) {
           foundPlayer = player;
@@ -164,7 +154,6 @@ exports.handler = async (event, context) => {
         }
       }
 
-      // Search pitchers if not found in batters
       if (!foundPlayer) {
         for (const player of pitchers) {
           if (player && player.Name && normalizeName(player.Name) === normalizedSearchName) {
@@ -182,7 +171,6 @@ exports.handler = async (event, context) => {
 
       console.log('Found player:', foundPlayer.Name, 'ID:', foundPlayer.ID);
 
-      // Mark player as drafted in Firebase
       const draftedData = {
         type: playerType,
         round: draftInfo.round,
@@ -202,7 +190,6 @@ exports.handler = async (event, context) => {
       );
 
       if (updateRes.ok) {
-        // Also update the lastUpdated timestamp
         await fetch(
           `${firebaseUrl}/draftData/lastUpdated.json`,
           {
@@ -220,10 +207,4 @@ exports.handler = async (event, context) => {
       }
 
     } catch (error) {
-      console.error('Error:', error);
-      return { statusCode: 500, body: 'Server error' };
-    }
-  }
-
-  return { statusCode: 200, body: 'OK' };
-};
+      console.error
