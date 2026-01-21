@@ -1,0 +1,6 @@
+{
+  "name": "wbl-draft-sync",
+  "version": "1.0.0",
+  "description": "Slack to Firebase draft sync for WBL",
+  "private": true
+}
