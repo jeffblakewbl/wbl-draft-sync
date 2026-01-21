@@ -53,7 +53,7 @@ function verifySlackSignature(event, signingSecret) {
 
 // Parse the draft message
 function parseDraftMessage(text) {
-  const regex = /Round (\d+), Pick (\d+) \(#\d+ overall\): (.+) select ([A-Z]+(?:\/[A-Z]+)?) (.+)/i;
+  const regex = /Round (\d+), Pick (\d+) \(#\d+ overall\): (.+) select ([A-Z0-9]+(?:\/[A-Z0-9]+)?) (.+)/i;
   const match = text.match(regex);
   
   if (!match) {
